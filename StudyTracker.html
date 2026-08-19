@@ -682,6 +682,7 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
   </div>
 </div>
 
+<script src="https://js.puter.com/v2/"></script>
 <script>
 // ── HELPERS ──
 function escapeHtml(str) { return (str||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -1255,16 +1256,11 @@ async function sendToJarvis() {
   const prompt=`You are JARVIS, a friendly study assistant. Answer in simple Hinglish (Hindi+English mix). Be concise (max 6 lines). ${ctx}\n\nStudent: ${msg}`;
 
   try {
-    const res = await fetch('https://text.pollinations.ai/', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({messages:[{role:'user',content:prompt}],model:'openai',seed:42,private:true})
-    });
-    if(!res.ok) throw new Error('API error');
-    const reply = await res.text();
-    document.getElementById(tid).innerHTML = reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<i>$1</i>');
+    const reply = await puter.ai.chat(prompt);
+    const text = typeof reply === 'string' ? reply : reply?.message?.content || reply?.content || 'Koi response nahi mila.';
+    document.getElementById(tid).innerHTML = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<i>$1</i>');
   } catch(e) {
-    document.getElementById(tid).innerHTML = '❌ Network error. Internet check karo.';
+    document.getElementById(tid).innerHTML = '❌ Error: ' + (e.message||'Try again.');
   }
   box.scrollTop=box.scrollHeight;
 }
