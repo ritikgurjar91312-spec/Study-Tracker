@@ -192,6 +192,9 @@ textarea.form-input { min-height: 250px; resize: vertical; line-height: 1.6; }
     <div class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
       <i class="fas fa-chart-pie"></i> <span>Analytics</span>
     </div>
+    <div class="nav-item" data-tab="resources" onclick="switchTab('resources')">
+      <i class="fas fa-folder-open"></i> <span>Resources</span>
+    </div>
     <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
       <i class="fas fa-cog"></i> <span>Settings</span>
     </div>
@@ -358,6 +361,50 @@ textarea.form-input { min-height: 250px; resize: vertical; line-height: 1.6; }
     </div>
   </div>
 
+  <!-- RESOURCES -->
+  <div id="resources" class="tab-pane">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">📁 My Resources</h2>
+        <p class="page-subtitle">Har topic ke liye notes, books, videos aur links save karo.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openAddResource()"><i class="fas fa-plus"></i> Add Resource</button>
+    </div>
+
+    <!-- Add Resource Form -->
+    <div id="resourceForm" style="display:none;" class="card" style="margin-bottom:24px;">
+      <h3 class="card-title"><i class="fas fa-plus-circle"></i> New Resource</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <input id="resTitle" class="form-input" placeholder="Title (e.g. NumPy Notes, Python Book)">
+        <select id="resType" class="form-input">
+          <option value="note">📝 Note</option>
+          <option value="book">📚 Book</option>
+          <option value="video">🎥 Video / YouTube</option>
+          <option value="link">🔗 Link / Website</option>
+          <option value="other">📌 Other</option>
+        </select>
+        <input id="resTopic" class="form-input" placeholder="Related Topic (optional)">
+        <input id="resUrl" class="form-input" placeholder="URL / Link (optional)">
+        <textarea id="resNote" class="form-input" style="min-height:100px;" placeholder="Notes / Description..."></textarea>
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-primary" onclick="saveResource()"><i class="fas fa-save"></i> Save</button>
+          <button class="btn btn-danger" onclick="document.getElementById('resourceForm').style.display='none'">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+      <button class="res-filter-btn active" onclick="filterResources('all')" data-filter="all" style="padding:8px 18px;border-radius:100px;font-weight:700;font-size:13px;background:var(--primary);color:white;border:none;cursor:pointer;">All</button>
+      <button class="res-filter-btn" onclick="filterResources('note')" data-filter="note" style="padding:8px 18px;border-radius:100px;font-weight:700;font-size:13px;background:#f1f5f9;color:#475569;border:none;cursor:pointer;">📝 Notes</button>
+      <button class="res-filter-btn" onclick="filterResources('book')" data-filter="book" style="padding:8px 18px;border-radius:100px;font-weight:700;font-size:13px;background:#f1f5f9;color:#475569;border:none;cursor:pointer;">📚 Books</button>
+      <button class="res-filter-btn" onclick="filterResources('video')" data-filter="video" style="padding:8px 18px;border-radius:100px;font-weight:700;font-size:13px;background:#f1f5f9;color:#475569;border:none;cursor:pointer;">🎥 Videos</button>
+      <button class="res-filter-btn" onclick="filterResources('link')" data-filter="link" style="padding:8px 18px;border-radius:100px;font-weight:700;font-size:13px;background:#f1f5f9;color:#475569;border:none;cursor:pointer;">🔗 Links</button>
+    </div>
+
+    <div id="resourcesList"></div>
+  </div>
+
   <!-- SETTINGS -->
   <div id="settings" class="tab-pane">
     <div class="page-header">
@@ -407,6 +454,7 @@ function switchTab(tabId) {
   document.getElementById(tabId).classList.add('active');
   document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
   if(tabId === 'analytics') renderChart();
+  if(tabId === 'resources') renderResources(currentFilter);
 }
 
 function saveState() {
@@ -966,7 +1014,66 @@ async function sendToJarvis() {
   box.scrollTop = box.scrollHeight;
 }
 
-<!-- JARVIS FLOATING BUTTON -->
+// --- RESOURCES ---
+const TYPE_ICONS = {note:'📝',book:'📚',video:'🎥',link:'🔗',other:'📌'};
+const TYPE_COLORS = {note:'#eff6ff',book:'#f0fdf4',video:'#fef2f2',link:'#fdf4ff',other:'#fffbeb'};
+const TYPE_BORDER = {note:'#bfdbfe',book:'#bbf7d0',video:'#fecaca',link:'#e9d5ff',other:'#fde68a'};
+let currentFilter = 'all';
+
+function openAddResource() {
+  document.getElementById('resourceForm').style.display='block';
+  document.getElementById('resTitle').focus();
+}
+function saveResource() {
+  const title = document.getElementById('resTitle').value.trim();
+  if(!title){alert('Title daalo!');return;}
+  state.resources = state.resources||[];
+  state.resources.unshift({id:Date.now(),title,type:document.getElementById('resType').value,topic:document.getElementById('resTopic').value.trim(),url:document.getElementById('resUrl').value.trim(),note:document.getElementById('resNote').value.trim(),date:new Date().toLocaleDateString()});
+  saveState();
+  ['resTitle','resTopic','resUrl','resNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('resourceForm').style.display='none';
+  renderResources(currentFilter);
+}
+function deleteResource(id){
+  state.resources=(state.resources||[]).filter(r=>r.id!==id);
+  saveState(); renderResources(currentFilter);
+}
+function filterResources(type){
+  currentFilter=type;
+  document.querySelectorAll('.res-filter-btn').forEach(b=>{
+    b.style.background=b.dataset.filter===type?'var(--primary)':'#f1f5f9';
+    b.style.color=b.dataset.filter===type?'white':'#475569';
+  });
+  renderResources(type);
+}
+function renderResources(type){
+  const list=document.getElementById('resourcesList');
+  if(!list)return;
+  const all=state.resources||[];
+  const filtered=type==='all'?all:all.filter(r=>r.type===type);
+  if(!filtered.length){list.innerHTML='<div class="card" style="text-align:center;padding:40px;"><i class="fas fa-folder-open" style="font-size:48px;color:#cbd5e1;display:block;margin-bottom:12px;"></i><p style="color:var(--text-muted);margin:0;">Koi resource nahi. Add karo!</p></div>';return;}
+  list.innerHTML=filtered.map(r=>`<div class="card" style="margin-bottom:16px;border-left:4px solid ${TYPE_BORDER[r.type]||'#e2e8f0'};background:${TYPE_COLORS[r.type]||'#fff'};">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:20px;">${TYPE_ICONS[r.type]||'📌'}</span>
+          <span style="font-weight:800;font-size:16px;">${escapeHtml(r.title)}</span>
+          ${r.topic?`<span style="background:#e2e8f0;color:#475569;padding:2px 10px;border-radius:100px;font-size:12px;font-weight:600;">${escapeHtml(r.topic)}</span>`:''}
+        </div>
+        ${r.note?`<p style="margin:0 0 8px;color:#475569;font-size:14px;line-height:1.6;">${escapeHtml(r.note)}</p>`:''}
+        ${r.url?`<a href="${escapeHtml(r.url)}" target="_blank" style="color:var(--primary);font-size:13px;font-weight:700;"><i class="fas fa-external-link-alt"></i> Open Link</a>`:''}
+        <div style="margin-top:8px;color:#94a3b8;font-size:12px;">${r.date}</div>
+      </div>
+      <button onclick="deleteResource(${r.id})" style="background:#fee2e2;color:#dc2626;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;margin-left:12px;"><i class="fas fa-trash"></i></button>
+    </div>
+  </div>`).join('');
+}
+
+// Load saved API key
+const _savedKey = localStorage.getItem('jarvisApiKey');
+if(_savedKey){const el=document.getElementById('apiKeyInput');if(el)el.value=_savedKey;}
+
+</script>
 <button id="jarvisBtn" onclick="toggleJarvis()" style="position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white;font-size:24px;z-index:9999;border:none;cursor:pointer;"><i class="fas fa-robot"></i></button>
 
 <!-- JARVIS PANEL -->
