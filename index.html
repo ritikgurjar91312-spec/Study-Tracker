@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3b82f6">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -682,7 +683,6 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
   </div>
 </div>
 
-<script src="https://js.puter.com/v2/"></script>
 <script>
 // ── HELPERS ──
 function escapeHtml(str) { return (str||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -701,8 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   document.getElementById('fileInput').addEventListener('change', handleFileUpload);
   document.getElementById('btnGenerate').addEventListener('click', generatePlan);
-  const savedKey = localStorage.getItem('geminiKey');
-  if (savedKey) document.getElementById('geminiKeyInput').value = savedKey;
+
   setTheme(localStorage.getItem('appTheme') || 'light');
   setDailyMotivation();
   updateUI();
@@ -1229,14 +1228,6 @@ function toggleJarvis() {
   const panel=document.getElementById('jarvisPanel');
   panel.style.display=jarvisOpen?'flex':'none';
   if(jarvisOpen) document.getElementById('jarvisInput').focus();
-}
-
-function saveGeminiKey() {
-  const key=document.getElementById('geminiKeyInput').value.trim();
-  if(!key) return;
-  localStorage.setItem('geminiKey', key);
-  document.getElementById('geminiKeySaved').style.display='block';
-  setTimeout(()=>document.getElementById('geminiKeySaved').style.display='none', 2500);
 }
 
 async function sendToJarvis() {
