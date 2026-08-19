@@ -346,6 +346,15 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
 .theme-btn-full{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid transparent;background:var(--input-bg);color:var(--text-main);transition:all 0.2s;}
 .theme-btn-full:hover{transform:translateY(-2px);border-color:var(--primary);}
 .theme-btn-full.active{border-color:var(--primary);background:var(--primary);color:white;box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+/* Background Layer */
+#bgLayer{position:fixed;inset:0;z-index:0;pointer-events:none;}
+#bgLayer canvas{position:absolute;inset:0;width:100%;height:100%;}
+#bgLayer .bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.18;}
+body{position:relative;}
+.sidebar,.main-content{position:relative;z-index:1;}
+.bg-preset-btn{width:80px;height:56px;border-radius:10px;border:2px solid var(--border);cursor:pointer;overflow:hidden;font-size:11px;font-weight:700;color:var(--text-main);background:var(--input-bg);transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+.bg-preset-btn:hover,.bg-preset-btn.active{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+.bg-preset-btn.active{border-color:var(--primary);outline:2px solid var(--primary);}
 /* old circle btn kept for compat */
 .theme-btn{width:36px;height:36px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all 0.2s;}
 .theme-btn.active{border-color:var(--primary);transform:scale(1.15);}
@@ -380,6 +389,7 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
 <body data-theme="light">
 
 <!-- Sidebar -->
+<div id="bgLayer"></div>
 <aside class="sidebar">
   <div class="brand"><i class="fas fa-book-reader"></i><span>Study Tracker</span></div>
   <div class="nav-menu">
@@ -613,6 +623,47 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
     <div><h2 class="page-title">Settings</h2><p class="page-subtitle">Manage app preferences and data.</p></div>
   </div>
 
+  <!-- Background -->
+  <div class="card" style="margin-bottom:20px;">
+    <h3 class="card-title"><i class="fas fa-image"></i> Background</h3>
+
+    <div style="font-size:11px;font-weight:800;color:var(--text-muted);letter-spacing:1px;margin-bottom:8px;">✨ ANIMATIONS</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="bg-preset-btn" id="bg-none" onclick="setBg('none')">⬜<span>None</span></button>
+      <button class="bg-preset-btn" id="bg-stars" onclick="setBg('stars')">⭐<span>Stars</span></button>
+      <button class="bg-preset-btn" id="bg-matrix" onclick="setBg('matrix')">💚<span>Matrix</span></button>
+      <button class="bg-preset-btn" id="bg-particles" onclick="setBg('particles')">🔵<span>Particles</span></button>
+      <button class="bg-preset-btn" id="bg-waves" onclick="setBg('waves')">🌊<span>Waves</span></button>
+      <button class="bg-preset-btn" id="bg-fire" onclick="setBg('fire')">🔥<span>Fire</span></button>
+    </div>
+
+    <div style="font-size:11px;font-weight:800;color:var(--text-muted);letter-spacing:1px;margin-bottom:8px;">🖼️ PRESET IMAGES</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="bg-preset-btn" id="bg-naruto-img" onclick="setBg('naruto-img')" style="background:linear-gradient(135deg,#ff6b00,#0a0500);">🍥<span style="color:white;">Naruto</span></button>
+      <button class="bg-preset-btn" id="bg-goku-img" onclick="setBg('goku-img')" style="background:linear-gradient(135deg,#f59e0b,#1a0800);">⚡<span style="color:white;">Goku</span></button>
+      <button class="bg-preset-btn" id="bg-goddess-img" onclick="setBg('goddess-img')" style="background:linear-gradient(135deg,#d4af37,#05030a);">🔱<span style="color:white;">Goddess</span></button>
+      <button class="bg-preset-btn" id="bg-space-img" onclick="setBg('space-img')" style="background:linear-gradient(135deg,#8b5cf6,#03001a);">🌌<span style="color:white;">Space</span></button>
+      <button class="bg-preset-btn" id="bg-sakura-img" onclick="setBg('sakura-img')" style="background:linear-gradient(135deg,#ff1493,#0d0008);">🌸<span style="color:white;">Sakura</span></button>
+      <button class="bg-preset-btn" id="bg-onepiece-img" onclick="setBg('onepiece-img')" style="background:linear-gradient(135deg,#dc2626,#000a14);">🏴‍☠️<span style="color:white;">One Piece</span></button>
+    </div>
+
+    <div style="font-size:11px;font-weight:800;color:var(--text-muted);letter-spacing:1px;margin-bottom:8px;">📁 CUSTOM</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px dashed var(--border);border-radius:10px;cursor:pointer;background:var(--input-bg);font-size:13px;font-weight:600;color:var(--text-muted);">
+        <i class="fas fa-upload" style="color:var(--primary);"></i> Upload Image / GIF
+        <input type="file" id="bgUpload" accept="image/*,.gif" style="display:none;" onchange="handleBgUpload(event)">
+      </label>
+      <div style="display:flex;gap:8px;">
+        <input id="bgUrlInput" class="form-input" placeholder="Ya image/GIF URL paste karo..." style="padding:10px 14px;font-size:13px;">
+        <button class="btn btn-primary btn-sm" onclick="setBgUrl()"><i class="fas fa-check"></i></button>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">Opacity: <span id="bgOpacityVal">20%</span></label>
+      <input type="range" id="bgOpacity" min="5" max="60" value="20" style="width:100%;accent-color:var(--primary);" oninput="updateBgOpacity(this.value)">
+    </div>
+  </div>
+
   <!-- Theme -->
   <div class="card" style="margin-bottom:20px;">
     <h3 class="card-title"><i class="fas fa-palette"></i> Theme</h3>
@@ -706,6 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setDailyMotivation();
   updateUI();
   renderResources();
+  initBg();
 });
 
 // ── NAVIGATION ──
@@ -1254,6 +1306,190 @@ async function sendToJarvis() {
     document.getElementById(tid).innerHTML = '❌ Error: ' + (e.message||'Try again.');
   }
   box.scrollTop=box.scrollHeight;
+}
+
+// ── BACKGROUND SYSTEM ──
+let bgAnimFrame = null;
+const PRESET_IMAGES = {
+  'naruto-img': 'https://wallpapercave.com/wp/wp2697965.jpg',
+  'goku-img': 'https://wallpapercave.com/wp/wp1913053.jpg',
+  'goddess-img': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1920&q=80',
+  'space-img': 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1920&q=80',
+  'sakura-img': 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80',
+  'onepiece-img': 'https://wallpapercave.com/wp/wp3415760.jpg'
+};
+
+function setBg(type) {
+  stopBgAnim();
+  const layer = document.getElementById('bgLayer');
+  layer.innerHTML = '';
+  document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bg-' + type);
+  if (btn) btn.classList.add('active');
+  localStorage.setItem('appBg', type);
+  const opacity = (document.getElementById('bgOpacity')?.value || 20) / 100;
+  if (type === 'none') return;
+  if (PRESET_IMAGES[type]) { applyBgImage(PRESET_IMAGES[type], opacity); return; }
+  const canvas = document.createElement('canvas');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  layer.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  if (type === 'stars') animStars(ctx, canvas);
+  else if (type === 'matrix') animMatrix(ctx, canvas);
+  else if (type === 'particles') animParticles(ctx, canvas);
+  else if (type === 'waves') animWaves(ctx, canvas);
+  else if (type === 'fire') animFire(ctx, canvas);
+}
+
+function applyBgImage(url, opacity) {
+  const layer = document.getElementById('bgLayer');
+  layer.innerHTML = `<img class="bg-img" src="${url}" style="opacity:${opacity};" onerror="this.style.display='none'">`;
+}
+
+function handleBgUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    stopBgAnim();
+    const layer = document.getElementById('bgLayer');
+    layer.innerHTML = '';
+    const opacity = (document.getElementById('bgOpacity')?.value || 20) / 100;
+    layer.innerHTML = `<img class="bg-img" src="${ev.target.result}" style="opacity:${opacity};">`;
+    localStorage.setItem('appBg', 'custom-upload');
+    localStorage.setItem('appBgCustom', ev.target.result);
+    document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
+  };
+  reader.readAsDataURL(file);
+}
+
+function setBgUrl() {
+  const url = document.getElementById('bgUrlInput').value.trim();
+  if (!url) return;
+  stopBgAnim();
+  const layer = document.getElementById('bgLayer');
+  layer.innerHTML = '';
+  const opacity = (document.getElementById('bgOpacity')?.value || 20) / 100;
+  applyBgImage(url, opacity);
+  localStorage.setItem('appBg', 'custom-url');
+  localStorage.setItem('appBgCustom', url);
+  document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
+}
+
+function updateBgOpacity(val) {
+  document.getElementById('bgOpacityVal').textContent = val + '%';
+  const img = document.querySelector('#bgLayer .bg-img');
+  if (img) img.style.opacity = val / 100;
+  localStorage.setItem('appBgOpacity', val);
+}
+
+function stopBgAnim() {
+  if (bgAnimFrame) { cancelAnimationFrame(bgAnimFrame); bgAnimFrame = null; }
+}
+
+function animStars(ctx, canvas) {
+  const stars = Array.from({length:180}, () => ({
+    x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+    r: Math.random()*1.8+0.3, a: Math.random(), speed: Math.random()*0.008+0.003
+  }));
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    stars.forEach(s => {
+      s.a += s.speed; if(s.a>1||s.a<0) s.speed*=-1;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${s.a*0.8})`; ctx.fill();
+    });
+    bgAnimFrame = requestAnimationFrame(draw);
+  } draw();
+}
+
+function animMatrix(ctx, canvas) {
+  const cols = Math.floor(canvas.width/18);
+  const drops = Array(cols).fill(1);
+  const chars = '0123456789ABCDEF日本語アイウエオカキクケコ';
+  function draw() {
+    ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#00ff41'; ctx.font='14px monospace';
+    drops.forEach((y,i) => {
+      ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*18, y*18);
+      if(y*18>canvas.height && Math.random()>0.975) drops[i]=0;
+      drops[i]++;
+    });
+    bgAnimFrame = requestAnimationFrame(draw);
+  } draw();
+}
+
+function animParticles(ctx, canvas) {
+  const pts = Array.from({length:80}, () => ({
+    x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+    vx:(Math.random()-0.5)*0.6, vy:(Math.random()-0.5)*0.6,
+    r:Math.random()*3+1, c:`hsl(${Math.random()*360},80%,70%)`
+  }));
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pts.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>canvas.width) p.vx*=-1;
+      if(p.y<0||p.y>canvas.height) p.vy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.c; ctx.globalAlpha=0.6; ctx.fill(); ctx.globalAlpha=1;
+    });
+    pts.forEach((p,i) => pts.slice(i+1).forEach(q => {
+      const d=Math.hypot(p.x-q.x,p.y-q.y);
+      if(d<120){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);
+        ctx.strokeStyle=`rgba(150,150,255,${0.15*(1-d/120)})`;ctx.lineWidth=0.8;ctx.stroke();}
+    }));
+    bgAnimFrame = requestAnimationFrame(draw);
+  } draw();
+}
+
+function animWaves(ctx, canvas) {
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    [0.3,0.2,0.15].forEach((a,i) => {
+      ctx.beginPath();
+      for(let x=0;x<=canvas.width;x+=4) {
+        const y = canvas.height*0.5 + Math.sin(x*0.008+t+i*1.2)*60*(1-i*0.2) + Math.sin(x*0.015+t*1.3)*30;
+        x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.lineTo(canvas.width,canvas.height); ctx.lineTo(0,canvas.height); ctx.closePath();
+      ctx.fillStyle=`rgba(14,165,233,${a})`; ctx.fill();
+    });
+    t+=0.015; bgAnimFrame = requestAnimationFrame(draw);
+  } draw();
+}
+
+function animFire(ctx, canvas) {
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(let i=0;i<6;i++) {
+      const x = canvas.width*0.5 + Math.sin(t*0.7+i)*80;
+      const h = 200+Math.sin(t+i*0.8)*80;
+      const grd = ctx.createRadialGradient(x,canvas.height,0,x,canvas.height-h,h);
+      grd.addColorStop(0,'rgba(255,200,0,0.3)');
+      grd.addColorStop(0.4,'rgba(255,80,0,0.15)');
+      grd.addColorStop(1,'rgba(255,0,0,0)');
+      ctx.beginPath(); ctx.ellipse(x,canvas.height-h/2,40+i*8,h/2,0,0,Math.PI*2);
+      ctx.fillStyle=grd; ctx.fill();
+    }
+    t+=0.02; bgAnimFrame = requestAnimationFrame(draw);
+  } draw();
+}
+
+function initBg() {
+  const saved = localStorage.getItem('appBg') || 'none';
+  const opacity = localStorage.getItem('appBgOpacity') || '20';
+  const opEl = document.getElementById('bgOpacity');
+  const opValEl = document.getElementById('bgOpacityVal');
+  if(opEl) { opEl.value = opacity; }
+  if(opValEl) { opValEl.textContent = opacity + '%'; }
+  if(saved === 'custom-upload' || saved === 'custom-url') {
+    const custom = localStorage.getItem('appBgCustom');
+    if(custom) { stopBgAnim(); const layer=document.getElementById('bgLayer'); layer.innerHTML=''; applyBgImage(custom, opacity/100); }
+  } else {
+    setBg(saved);
+  }
 }
 
 // ── PWA ──
