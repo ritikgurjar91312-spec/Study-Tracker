@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Study Tracker AI</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StudyAI">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-main: #f8fafc; --bg-surface: #ffffff; --bg-sidebar: #0f172a;
+  --text-main: #1e293b; --text-muted: #64748b; --text-sidebar: #f8fafc;
+  --primary: #3b82f6; --primary-hover: #2563eb; --secondary: #e2e8f0;
+  --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+  --radius-lg: 24px; --radius-md: 16px; --radius-sm: 10px;
+  --shadow-soft: 0px 10px 25px rgba(0, 0, 0, 0.05);
+  --sidebar-width: 280px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Outfit', sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+button, input, select, textarea { font: inherit; outline: none; border: none; }
+button { cursor: pointer; transition: all 0.2s ease; }
+a { text-decoration: none; }
+
+/* SaaS Layout - Sidebar */
+.sidebar { width: var(--sidebar-width); background: var(--bg-sidebar); display: flex; flex-direction: column; padding: 30px 20px; z-index: 100; transition: transform 0.3s ease; }
+.brand { display: flex; align-items: center; gap: 12px; color: white; font-size: 24px; font-weight: 800; margin-bottom: 50px; padding-left: 10px; }
+.brand i { color: var(--primary); font-size: 28px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 14px; }
+.nav-menu { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-radius: var(--radius-sm); color: #94a3b8; font-weight: 600; font-size: 16px; transition: all 0.2s; }
+.nav-item:hover { color: white; background: rgba(255,255,255,0.05); }
+.nav-item.active { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+.nav-item i { font-size: 20px; width: 24px; text-align: center; }
+
+/* Main Content Area */
+.main-content { flex: 1; overflow-y: auto; padding: 40px; position: relative; scroll-behavior: smooth; }
+.tab-pane { display: none; animation: fadeIn 0.4s ease; }
+.tab-pane.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Header */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.page-title { font-size: 32px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+.page-subtitle { color: var(--text-muted); font-weight: 500; margin: 5px 0 0; font-size: 15px; }
+
+/* Cards & Grid */
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-bottom: 30px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px; margin-bottom: 30px; }
+.card { background: var(--bg-surface); border-radius: var(--radius-lg); padding: 28px; box-shadow: var(--shadow-soft); position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,0.03); }
+.card-title { font-size: 20px; font-weight: 700; margin: 0 0 20px 0; display: flex; align-items: center; gap: 10px; color: var(--text-main); }
+
+/* Stats */
+.stat-box { display: flex; align-items: center; gap: 18px; }
+.stat-icon { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+.stat-info h3 { margin: 0; font-size: 32px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+.stat-info p { margin: 6px 0 0; font-size: 14px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* UI Elements */
+.upload-box { border: 2px dashed #cbd5e1; border-radius: var(--radius-md); padding: 40px 20px; text-align: center; background: #f8fafc; transition: all 0.3s; cursor: pointer; }
+.upload-box:hover { border-color: var(--primary); background: #eff6ff; }
+.upload-box i { font-size: 48px; color: var(--primary); margin-bottom: 16px; }
+.upload-box input { display: none; }
+.form-input { width: 100%; padding: 16px 20px; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); font-family: inherit; font-size: 15px; background: #f8fafc; transition: border-color 0.2s; color: var(--text-main); }
+.form-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+textarea.form-input { min-height: 250px; resize: vertical; line-height: 1.6; }
+
+.btn { padding: 14px 28px; border-radius: var(--radius-sm); font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; letter-spacing: 0.3px; }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
+.btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4); }
+.btn-danger { background: #fee2e2; color: #dc2626; }
+.btn-danger:hover { background: #fecaca; }
+
+/* Alerts */
+.alert { padding: 16px 20px; border-radius: var(--radius-sm); background: #eff6ff; border-left: 4px solid var(--primary); display: flex; gap: 14px; align-items: flex-start; margin-bottom: 24px; }
+.alert-icon { color: var(--primary); font-size: 20px; margin-top: 2px; }
+.alert-text strong { display: block; margin-bottom: 4px; font-size: 15px; color: #1e293b; }
+.alert-text p { margin: 0; font-size: 14px; color: #475569; }
+
+/* Plan Display */
+.progress-container { background: #fff; padding: 6px; border-radius: 100px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.04); margin-bottom: 30px; border: 1px solid #e2e8f0; }
+.progress-bar { height: 16px; border-radius: 100px; background: linear-gradient(90deg, #10b981, #34d399); width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+.week-card { background: var(--bg-surface); border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); overflow: hidden; }
+.week-header { padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+.week-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-main); }
+.status-badge { background: #eff6ff; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 13px; }
+.status-badge.complete { background: #dcfce7; color: var(--success); }
+
+/* Nested Task Structure */
+.main-topic-block { border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+.main-topic-block:last-child { border-bottom: none; }
+.main-topic-header { padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; background: #ffffff; transition: background 0.2s; }
+.main-topic-header:hover { background: #fcfcfd; }
+.main-topic-title-row { display: flex; align-items: center; gap: 16px; }
+
+/* Focus Area Box */
+.focus-area-box { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; padding: 10px 16px; border-radius: 8px; font-size: 14px; margin: 0 24px 16px 60px; font-weight: 500; }
+.focus-area-box i { margin-right: 6px; color: #f59e0b; }
+
+.subtopics-container { padding: 0 24px 20px 60px; display: flex; flex-direction: column; gap: 10px; }
+.subtopic-row { display: flex; align-items: center; gap: 12px; }
+
+.custom-cb { appearance: none; width: 24px; height: 24px; border: 2px solid #cbd5e1; border-radius: 6px; outline: none; cursor: pointer; position: relative; transition: all 0.2s; flex-shrink: 0; margin-top: 2px; }
+.custom-cb:checked { background: var(--success); border-color: var(--success); }
+.custom-cb:checked::after { content: '\f00c'; font-family: 'Font Awesome 5 Free'; font-weight: 900; color: white; font-size: 14px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+.custom-cb-sub { appearance: none; width: 20px; height: 20px; border: 2px solid #cbd5e1; border-radius: 4px; outline: none; cursor: pointer; position: relative; transition: all 0.2s; flex-shrink: 0; }
+.custom-cb-sub:checked { background: var(--primary); border-color: var(--primary); }
+.custom-cb-sub:checked::after { content: '\f00c'; font-family: 'Font Awesome 5 Free'; font-weight: 900; color: white; font-size: 11px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+.task-name { font-size: 18px; font-weight: 700; color: var(--text-main); flex: 1; cursor: pointer; line-height: 1.3; transition: color 0.2s; }
+.subtask-name { font-size: 15px; font-weight: 500; color: #475569; flex: 1; cursor: pointer; line-height: 1.4; transition: color 0.2s; }
+
+.custom-cb:checked + .task-name { color: #94a3b8; text-decoration: line-through; }
+.custom-cb-sub:checked + .subtask-name { color: #94a3b8; text-decoration: line-through; }
+
+/* YouTube Buttons */
+.yt-group { display: flex; gap: 10px; margin-left: 40px; flex-wrap: wrap; margin-top: 10px; }
+.yt-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 700; transition: all 0.2s; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+.yt-link:hover { background: #dc2626; color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(220,38,38,0.2); }
+.yt-link.hindi { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.yt-link.hindi:hover { background: #2563eb; color: white; box-shadow: 0 4px 10px rgba(59,130,246,0.2); }
+.yt-link.prep { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+.yt-link.prep:hover { background: #16a34a; color: white; box-shadow: 0 4px 10px rgba(22,163,74,0.2); }
+
+/* Badges */
+.badge-container { display: flex; gap: 10px; flex-wrap: wrap; }
+.badge-item { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 100px; font-weight: 700; font-size: 13px; }
+
+/* Generative AI UI Elements */
+.ai-loader { display: none; text-align: center; padding: 40px; background: #f8fafc; border-radius: var(--radius-md); border: 1px dashed #cbd5e1; margin-top: 20px; }
+.ai-loader.active { display: block; }
+.ai-spinner { font-size: 40px; color: var(--primary); margin-bottom: 16px; animation: spin 1.5s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 900px) {
+  body { flex-direction: column; }
+  .sidebar { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; height: auto; flex-direction: row; padding: 10px; z-index: 999; justify-content: space-around; }
+  .brand { display: none; }
+  .nav-menu { flex-direction: row; justify-content: space-around; width: 100%; }
+  .nav-item { flex-direction: column; gap: 4px; padding: 8px; font-size: 12px; }
+  .nav-item span { display: none; }
+  .main-content { padding: 20px; padding-bottom: 100px; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .yt-group { margin-left: 0; margin-top: 5px; }
+  .subtopics-container { padding-left: 20px; }
+  .focus-area-box { margin-left: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar Navigation -->
+<aside class="sidebar">
+  <div class="brand">
+    <i class="fas fa-book-reader"></i>
+    <span>Study Tracker</span>
+  </div>
+  <div class="nav-menu">
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+      <i class="fas fa-home"></i> <span>Dashboard</span>
+    </div>
+    <div class="nav-item" data-tab="generator" onclick="switchTab('generator')">
+      <i class="fas fa-bolt"></i> <span>AI Extraction</span>
+    </div>
+    <div class="nav-item" data-tab="plan" onclick="switchTab('plan')">
+      <i class="fas fa-layer-group"></i> <span>Active Plan</span>
+    </div>
+    <div class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
+      <i class="fas fa-chart-pie"></i> <span>Analytics</span>
+    </div>
+    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+      <i class="fas fa-cog"></i> <span>Settings</span>
+    </div>
+  </div>
+  <!-- Install Button -->
+  <button id="installBtn" onclick="installApp()" style="display:none;margin-top:20px;background:linear-gradient(135deg,#10b981,#3b82f6);color:white;border:none;padding:14px 20px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;align-items:center;gap:10px;">
+    <i class="fas fa-download"></i> <span>Install App</span>
+  </button>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content">
+  
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="tab-pane active">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Welcome back! 👋</h2>
+        <p class="page-subtitle">Here is your study overview and progress.</p>
+      </div>
+      <button class="btn btn-primary" onclick="switchTab('plan')">Go to Study Plan</button>
+    </div>
+
+    <div class="grid-4">
+      <div class="card stat-box">
+        <div class="stat-icon" style="background: #eff6ff; color: var(--primary);"><i class="fas fa-list-check"></i></div>
+        <div class="stat-info"><h3 id="statTotal">0</h3><p>Main Topics</p></div>
+      </div>
+      <div class="card stat-box">
+        <div class="stat-icon" style="background: #dcfce7; color: var(--success);"><i class="fas fa-check-double"></i></div>
+        <div class="stat-info"><h3 id="statDone">0%</h3><p>Completion</p></div>
+      </div>
+      <div class="card stat-box">
+        <div class="stat-icon" style="background: #fef3c7; color: var(--warning);"><i class="fas fa-fire"></i></div>
+        <div class="stat-info"><h3 id="statStreak">0</h3><p>Day Streak</p></div>
+      </div>
+      <div class="card stat-box">
+        <div class="stat-icon" style="background: #fee2e2; color: var(--danger);"><i class="fas fa-clock"></i></div>
+        <div class="stat-info"><h3 id="statHours">0.0</h3><p>Hours Studied</p></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 class="card-title"><i class="fas fa-crosshairs text-primary"></i> Current Focus Area</h3>
+        <div id="todayTaskBox">
+          <div class="alert" style="margin: 0; background: #f8fafc; border-color: #cbd5e1;">
+            <i class="fas fa-info-circle alert-icon" style="color: #64748b;"></i>
+            <div class="alert-text">
+              <strong style="color: #475569;">No active plan detected</strong>
+              <p>Please use the AI Extraction tab to upload your syllabus and generate a plan.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="card-title"><i class="fas fa-medal text-warning"></i> Unlocked Badges</h3>
+        <div id="badgeContainer" class="badge-container">
+          <div style="color: var(--text-muted); font-size: 14px; font-weight: 500;">Complete tasks in your study plan to unlock achievement badges!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERATOR (UPLOAD & EXTRACT) -->
+  <div id="generator" class="tab-pane">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Gen-AI Data Extractor</h2>
+        <p class="page-subtitle">Paste Google Sheets/Excel data. The built-in AI parser will semantically analyze and extract only valid Topics, Focus Areas, and Sub-topics.</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 class="card-title"><i class="fas fa-paste"></i> 1. Input Syllabus Content</h3>
+        
+        <label class="upload-box" for="fileInput" style="padding: 30px; display:block;">
+          <i class="fas fa-file-pdf" style="font-size:40px; color:var(--primary); display:block; margin-bottom:12px;"></i>
+          <h3 style="margin: 0 0 6px; color: var(--text-main); font-size: 17px; font-weight:700;">Click to Upload PDF / TXT</h3>
+          <p style="margin:0; color:var(--text-muted); font-size:13px;">Plan will be generated automatically after upload</p>
+          <input type="file" id="fileInput" accept=".pdf,.txt,.csv">
+        </label>
+        
+        <div style="text-align: center; margin: 20px 0; color: var(--text-muted); font-weight: 700; font-size: 13px; letter-spacing: 1px;">OR PASTE GOOGLE SHEETS DATA BELOW</div>
+        
+        <textarea id="syllabusText" class="form-input" placeholder="Select the rows from your table and paste here..." style="min-height: 250px; font-family: monospace;"></textarea>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title"><i class="fas fa-brain text-primary"></i> 2. AI Parsing Configuration</h3>
+        
+        <div class="alert">
+          <i class="fas fa-microchip alert-icon"></i>
+          <div class="alert-text">
+            <strong>Semantic Content Analysis Active</strong>
+            <p>The parser now uses logic heuristics to automatically identify and drop structural junk, faculty info, meta-tasks, and non-academic sentences. It specifically hunts for [Topic], [Focus], and [Sub-topic] relationships.</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display:block; font-weight:600; margin-bottom:8px; font-size:14px;">Plan Duration</label>
+          <select id="duration" class="form-input">
+            <option value="4">4 Weeks (Crash Course)</option>
+            <option value="8">8 Weeks (Accelerated)</option>
+            <option value="12" selected>12 Weeks (Standard ~3 Months)</option>
+            <option value="16">16 Weeks (Extended)</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" id="btnGenerate" style="width: 100%; padding: 18px; font-size: 16px; margin-top: 10px;">
+          <i class="fas fa-cogs"></i> Run AI Extraction & Generate
+        </button>
+        
+        <!-- Fake loader for UX feeling -->
+        <div id="aiLoader" class="ai-loader">
+          <i class="fas fa-circle-notch ai-spinner"></i>
+          <h3 style="margin: 0 0 5px; color: var(--text-main);">Analyzing Syllabus Data...</h3>
+          <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Filtering out irrelevant headers, instructional sentences, and mapping hierarchies.</p>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDY PLAN -->
+  <div id="plan" class="tab-pane">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Master Study Plan</h2>
+        <p class="page-subtitle" id="planMetaText">Your personalized roadmap.</p>
+      </div>
+      <button class="btn btn-danger" onclick="deletePlan()"><i class="fas fa-trash-alt"></i> Delete Plan</button>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-bar" id="mainProgressBar"></div>
+    </div>
+
+    <div id="weeksContainer">
+      <!-- Generated content goes here -->
+      <div class="card" style="text-align: center; padding: 60px 20px;">
+        <i class="fas fa-folder-open" style="font-size: 64px; color: #cbd5e1; margin-bottom: 20px;"></i>
+        <h3 style="margin:0 0 10px; color: var(--text-main);">No Plan Found</h3>
+        <p style="color: var(--text-muted); margin: 0 0 24px;">Generate a plan using the AI Extraction tab to see it here.</p>
+        <button class="btn btn-primary" onclick="switchTab('generator')">Go to Extractor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div id="analytics" class="tab-pane">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Analytics</h2>
+        <p class="page-subtitle">Track your study momentum.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="card-title"><i class="fas fa-chart-line text-primary"></i> Activity (Last 7 Days)</h3>
+      <div style="height: 400px; width: 100%; position: relative;">
+        <canvas id="activityChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="settings" class="tab-pane">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Settings</h2>
+        <p class="page-subtitle">Manage your application data.</p>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:24px;">
+      <h3 class="card-title"><i class="fas fa-robot"></i> Jarvis AI — Gemini API Key</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin:0 0 16px;">Free API key lo: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary);font-weight:700;">aistudio.google.com</a></p>
+      <div style="display:flex;gap:12px;">
+        <input id="apiKeyInput" type="password" class="form-input" placeholder="Paste your Gemini API key here..." style="flex:1;" value="">
+        <button class="btn btn-primary" onclick="saveApiKey()"><i class="fas fa-save"></i> Save</button>
+      </div>
+      <div id="apiKeySaved" style="display:none;color:var(--success);font-weight:700;margin-top:10px;font-size:14px;"><i class="fas fa-check-circle"></i> API Key saved!</div>
+    </div>
+    <div class="card">
+      <h3 class="card-title"><i class="fas fa-database"></i> Backup & Reset</h3>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="exportData()"><i class="fas fa-download"></i> Download Backup</button>
+        <button class="btn btn-danger" onclick="deletePlan()"><i class="fas fa-skull-crossbones"></i> Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// --- STATE MANAGEMENT ---
+// New Structure: plan -> [ {week: "Week 1", topics: [ {title: "NumPy", focus: ["Intro", "Array"], subs: ["2D array", "Simulate"]} ] } ]
+let state = JSON.parse(localStorage.getItem("StudyTrackerAI_V1")) || { plan: [], done: {}, study: {} };
+let chartInstance = null;
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+  document.getElementById('btnGenerate').addEventListener('click', generatePlan);
+  updateUI();
+});
+
+// --- NAVIGATION ---
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
+  if(tabId === 'analytics') renderChart();
+}
+
+function saveState() {
+  localStorage.setItem("StudyTrackerAI_V1", JSON.stringify(state));
+  updateUI();
+}
+
+// --- FOOLPROOF DELETE PLAN ---
+window.deletePlan = function() {
+  if (confirm("🚨 Are you sure you want to delete this plan? All tasks and progress will be permanently lost!")) {
+    localStorage.removeItem("StudyTrackerAI_V1"); 
+    window.location.reload(); 
+  }
+};
+
+// --- DATA UPLOAD LOGIC ---
+async function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Show loading state on upload box
+  const uploadLabel = document.querySelector('label[for="fileInput"]');
+  uploadLabel.innerHTML = `<h3 style="margin:0;color:var(--primary);font-size:16px;"><i class="fas fa-circle-notch fa-spin" style="margin-right:8px;"></i> Reading "${file.name}"...</h3>`;
+
+  const textArea = document.getElementById('syllabusText');
+  
+  try {
+    let text = "";
+    if (file.name.toLowerCase().endsWith(".pdf")) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        let lastY = -1;
+        for (let item of content.items) {
+          if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) text += "\n";
+          text += item.str + " ";
+          lastY = item.transform[5];
+        }
+        text += "\n\n";
+      }
+    } else {
+      text = await file.text();
+    }
+    textArea.value = text;
+
+    // Update upload box to show success
+    uploadLabel.innerHTML = `<h3 style="margin:0;color:var(--success);font-size:16px;"><i class="fas fa-check-circle" style="margin-right:8px;"></i> "${file.name}" loaded! Auto-generating plan...</h3><input type="file" id="fileInput" accept=".pdf,.txt,.csv">`;
+    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+    // Auto-trigger plan generation
+    generatePlan();
+
+  } catch (err) {
+    uploadLabel.innerHTML = `<h3 style="margin:0;color:var(--danger);font-size:16px;"><i class="fas fa-exclamation-circle" style="margin-right:8px;"></i> Failed to read file. Try again.</h3><input type="file" id="fileInput" accept=".pdf,.txt,.csv">`;
+    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+  }
+}
+
+// --- ADVANCED SEMANTIC PARSER (HEURISTIC LOGIC) ---
+// This parser uses rules to evaluate if a chunk of text is valid academic material or junk metadata.
+function performSemanticExtraction(text) {
+  const lines = text.split(/\r?\n/);
+  let parsedPlan = [];
+  let currentWeek = null;
+  let haltParsing = false;
+
+  // Words that indicate a header row or pure metadata. If a chunk EXACTLY matches these, it's dropped.
+  const EXACT_JUNK = [
+    "week", "topics", "focus area", "sub - topics", "sub-topics", "sub topics",
+    "ai concept / soft skills", "tasks / projects", "recognition activities",
+    "assign faculty", "assign", "faculty", "resources", "it context", 
+    "reasoning details", "aptitude details", "levels", "level 2a", "2a",
+    "topic", "focus", "subtopic", "concept", "task", "project", "activity",
+    "sr no", "sr. no", "sr.no", "s.no", "s. no", "no.", "no", "unit", "module",
+    "description", "details", "name", "title", "subject", "course", "semester",
+    "hours", "marks", "credits", "total", "date", "duration", "period",
+    "teacher", "instructor", "professor", "hod", "head", "department",
+    "college", "university", "institute", "school", "class", "batch", "year",
+    "reference", "textbook", "book", "author", "edition", "publisher",
+    "co", "co1", "co2", "co3", "co4", "co5", "po", "pso", "bloom",
+    "knowledge", "understand", "apply", "analyze", "evaluate", "create",
+    "l1", "l2", "l3", "l4", "l5", "l6", "bt level", "cognitive level"
+  ];
+
+  // Sentences starting with these words are almost always instructional / meta, NOT study topics.
+  const SENTENCE_STARTERS_JUNK = [
+    "month ", "ask chatgpt", "students ", "project:", "capstone", 
+    "design ui", "generate ", "copilot:", "gemini:", "shuffle.dev", 
+    "each student", "each capstone", "include ai", "demo screenshots", 
+    "quick hackathon", "explain logic", "simulate ", "document ", "build ", 
+    "clean csv", "students review", "final presentation",
+    "note:", "note -", "instruction", "objective", "outcome", "upon completion",
+    "at the end", "after this", "this course", "this subject", "this unit",
+    "the student", "learner", "candidate", "refer ", "see ", "as per",
+    "total hours", "total marks", "internal", "external", "examination",
+    "prepared by", "approved by", "verified by", "checked by", "sign",
+    "page ", "sl.", "s.no"
+  ];
+
+  // Helper: check if a string is pure junk (numeric, single char, or matches junk lists)
+  function isJunk(val) {
+    if (!val || val.trim().length < 2) return true;
+    const v = val.trim().toLowerCase();
+    if (/^[\d\s.\-/]+$/.test(v)) return true; // purely numeric/symbols
+    if (EXACT_JUNK.includes(v)) return true;
+    if (SENTENCE_STARTERS_JUNK.some(s => v.startsWith(s))) return true;
+    return false;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    if (haltParsing) break;
+
+    // Clean up quotes from excel
+    let rawLine = lines[i].replace(/^"|"$/g, ''); 
+    
+    // If it's a tab-separated row (Google Sheets format)
+    if (rawLine.includes('\t')) {
+      let columns = rawLine.split('\t');
+      
+      let colWeek = columns[0] ? columns[0].trim() : "";
+      let colTopic = columns[1] ? columns[1].trim() : "";
+      let colFocus = columns[2] ? columns[2].trim() : "";
+      let colSub = columns[3] ? columns[3].trim() : "";
+
+      // Semantic Check 1: Stop at Aptitude section (out of scope)
+      if (colWeek.toLowerCase().includes("aptitude") || colTopic.toLowerCase().includes("algebraic")) {
+        haltParsing = true; break;
+      }
+
+      // Semantic Check 2: Is this a table header row? Drop if topic OR focus column is a junk word
+      if (isJunk(colTopic) && isJunk(colFocus) && isJunk(colSub)) continue;
+      // Also drop if topic itself is junk (header row like "Topics", "Module", etc.)
+      if (isJunk(colTopic)) continue;
+
+      // Handle Week Assignment
+      if (/^week\s*\d+/i.test(colWeek)) {
+        currentWeek = { title: colWeek, topics: [] };
+        parsedPlan.push(currentWeek);
+      }
+      if (!currentWeek) {
+        currentWeek = { title: "Study Plan", topics: [] };
+        parsedPlan.push(currentWeek);
+      }
+
+      // Process the Main Topic
+      if (!isJunk(colTopic)) {
+        
+        // Extract Focus Areas — filter each item through isJunk
+        let focusList = colFocus.split('\n')
+          .map(f => f.replace(/^[-•]\s*/, "").replace(/^"|"$/g, '').trim())
+          .filter(f => !isJunk(f));
+
+        // Extract Sub-topics — filter each item through isJunk
+        let subList = colSub.split('\n')
+          .map(s => s.replace(/^[-•]\s*/, "").replace(/^"|"$/g, '').trim())
+          .filter(s => !isJunk(s));
+
+        currentWeek.topics.push({
+          title: colTopic,
+          focus: focusList,
+          subs: subList
+        });
+      }
+    } else {
+      // Plain text (PDF). Strict topic-only extraction.
+      let clean = rawLine.trim();
+      if (clean.length < 3) continue;
+      let lower = clean.toLowerCase();
+
+      // Stop conditions
+      if (lower.includes("aptitude") || lower.includes("algebraic equations") ||
+          lower.includes("prepared by") || lower.includes("approved by") ||
+          lower.includes("page no") || lower.includes("syllabus copy")) { haltParsing = true; break; }
+
+      // Skip pure junk
+      if (isJunk(clean)) continue;
+
+      // Skip lines that are clearly metadata: contain digits heavily, emails, URLs, long sentences
+      if (/[\w.]+@[\w.]+/.test(clean)) continue;           // email
+      if (/https?:\/\//.test(clean)) continue;             // URL
+      if (/\d{4,}/.test(clean)) continue;                  // 4+ digit numbers (roll no, year, phone)
+      if ((clean.match(/\d/g)||[]).length > clean.length * 0.3) continue; // >30% digits
+
+      // Detect Unit/Module/Week as grouping header
+      if (/^(unit|module|chapter|week|section)\s*[-:]?\s*\d+/i.test(lower) ||
+          /^(unit|module|chapter|week|section)\s*[-:]?\s*(one|two|three|four|five|six|seven|eight)/i.test(lower)) {
+        // Extract a clean title
+        let unitTitle = clean.replace(/^(unit|module|chapter|week|section)\s*[-:]?\s*/i, '').trim();
+        let unitNum = (clean.match(/\d+/) || [''])[0];
+        currentWeek = { title: `Unit ${unitNum}${unitTitle ? ': ' + unitTitle : ''}`.trim(), topics: [] };
+        parsedPlan.push(currentWeek);
+        continue;
+      }
+
+      if (!currentWeek) {
+        currentWeek = { title: "Study Plan", topics: [] };
+        parsedPlan.push(currentWeek);
+      }
+
+      // Detect sub-topic: starts with bullet, dash, or numbered list
+      let isSub = /^[-•*]/.test(clean) || /^\d+[.)\s]/.test(clean);
+      let textContent = clean.replace(/^[-•*]\s*/, "").replace(/^\d+[.)\s]+/, "").trim();
+
+      // Skip if textContent is junk after stripping bullet
+      if (isJunk(textContent)) continue;
+
+      // Skip long instructional sentences (> 10 words and not a bullet)
+      if (!isSub && textContent.split(/\s+/).length > 10) continue;
+
+      // Skip lines that look like headings/labels (ALL CAPS short lines that are junk)
+      if (textContent === textContent.toUpperCase() && textContent.split(/\s+/).length <= 3 && isJunk(textContent)) continue;
+
+      if (isSub) {
+        if (currentWeek.topics.length === 0) {
+          currentWeek.topics.push({ title: "Core Concepts", focus: [], subs: [] });
+        }
+        currentWeek.topics[currentWeek.topics.length - 1].subs.push(textContent);
+      } else {
+        // Main topic: must be reasonably short and not contain colon (which usually means label:value)
+        if (textContent.length <= 80 && !textContent.includes(":")) {
+          currentWeek.topics.push({ title: textContent, focus: [], subs: [] });
+        } else if (textContent.includes(":")) {
+          // "Topic: subtopic" pattern — split it
+          let parts = textContent.split(":");
+          let mainT = parts[0].trim();
+          let subT = parts.slice(1).join(":").trim();
+          if (!isJunk(mainT)) {
+            currentWeek.topics.push({ title: mainT, focus: [], subs: subT && !isJunk(subT) ? [subT] : [] });
+          }
+        }
+      }
+    }
+  }
+
+  // Final Cleanup Pass
+  parsedPlan = parsedPlan.filter(w => {
+    w.topics = w.topics.filter(t => t.subs.length > 0 || t.focus.length > 0 || (t.title !== "Core Concepts" && t.title.length > 3));
+    // Deduplicate
+    w.topics.forEach(t => {
+      t.focus = [...new Set(t.focus)];
+      t.subs = [...new Set(t.subs)];
+    });
+    return w.topics.length > 0;
+  });
+
+  return parsedPlan;
+}
+
+function generatePlan() {
+  const text = document.getElementById('syllabusText').value.trim();
+  if (!text) { alert("Please paste the data from Google Sheets first."); return; }
+  
+  // Show Fake Loader for UX
+  document.getElementById('btnGenerate').style.display = 'none';
+  document.getElementById('aiLoader').classList.add('active');
+  
+  setTimeout(() => {
+    const parsedPlan = performSemanticExtraction(text);
+    
+    document.getElementById('btnGenerate').style.display = 'block';
+    document.getElementById('aiLoader').classList.remove('active');
+
+    if (parsedPlan.length === 0) {
+      alert("No valid study topics found. Please check your PDF — make sure it contains a proper syllabus with topic names.");
+      return;
+    }
+    
+    const duration = parseInt(document.getElementById('duration').value);
+    let allTopics = [];
+    parsedPlan.forEach(w => allTopics.push(...w.topics));
+
+    let finalPlan;
+    // If parsed plan already has meaningful unit/week structure, keep it
+    if (parsedPlan.length >= 2 && parsedPlan.every(w => w.title !== "Study Plan")) {
+      finalPlan = parsedPlan;
+    } else {
+      // Redistribute into selected duration weeks
+      finalPlan = Array.from({length: duration}, (_, i) => ({ title: `Week ${i + 1}`, topics: [] }));
+      allTopics.forEach((t, i) => { finalPlan[i % duration].topics.push(t); });
+    }
+    
+    state.plan = finalPlan;
+    state.done = {};
+    state.study = {};
+    
+    saveState();
+    switchTab('plan');
+  }, 1200); // 1.2s delay for AI feel
+}
+
+// --- TASK INTERACTION ---
+window.toggleMain = function(wIdx, tIdx, isChecked) {
+  const tKey = `m-${wIdx}-${tIdx}`;
+  state.done[tKey] = isChecked;
+  
+  // Toggle all its subtopics
+  const topic = state.plan[wIdx].topics[tIdx];
+  topic.subs.forEach((_, sIdx) => {
+    state.done[`s-${wIdx}-${tIdx}-${sIdx}`] = isChecked;
+  });
+  
+  recordStudyTime(isChecked);
+  saveState();
+};
+
+window.toggleSub = function(wIdx, tIdx, sIdx, isChecked) {
+  state.done[`s-${wIdx}-${tIdx}-${sIdx}`] = isChecked;
+  
+  // If all subs are checked, check main. Else uncheck main.
+  const topic = state.plan[wIdx].topics[tIdx];
+  const allDone = topic.subs.every((_, i) => state.done[`s-${wIdx}-${tIdx}-${i}`]);
+  
+  const tKey = `m-${wIdx}-${tIdx}`;
+  if (allDone && !state.done[tKey]) {
+    state.done[tKey] = true;
+    recordStudyTime(true);
+  } else if (!allDone && state.done[tKey]) {
+    state.done[tKey] = false;
+    recordStudyTime(false);
+  }
+  
+  saveState();
+};
+
+function recordStudyTime(isAdding) {
+  const today = new Date().toISOString().slice(0, 10);
+  state.study[today] = (state.study[today] || 0) + (isAdding ? 0.5 : -0.5);
+  if (state.study[today] < 0) state.study[today] = 0;
+}
+
+// --- UI UPDATES ---
+function updateUI() {
+  if (!state.plan || state.plan.length === 0) {
+    document.getElementById('statTotal').innerText = '0';
+    document.getElementById('statDone').innerText = '0%';
+    document.getElementById('statStreak').innerText = '0';
+    document.getElementById('statHours').innerText = '0.0';
+    return;
+  }
+  
+  let totalMain = 0; let doneMainCount = 0;
+  state.plan.forEach((w, wi) => {
+    w.topics.forEach((t, ti) => {
+      totalMain++;
+      if (state.done[`m-${wi}-${ti}`]) doneMainCount++;
+    });
+  });
+  
+  const pct = totalMain ? Math.round((doneMainCount/totalMain)*100) : 0;
+  document.getElementById('statTotal').innerText = totalMain;
+  document.getElementById('statDone').innerText = `${pct}%`;
+  
+  let totalHours = Object.values(state.study).reduce((a,b) => a+b, 0);
+  document.getElementById('statHours').innerText = totalHours.toFixed(1);
+  
+  // Streak Logic
+  let streak = 0;
+  const dates = Object.keys(state.study).filter(d => state.study[d] > 0).sort().reverse();
+  if (dates.length > 0) {
+    let current = new Date();
+    let todayStr = current.toISOString().slice(0,10);
+    current.setDate(current.getDate() - 1);
+    let yestStr = current.toISOString().slice(0,10);
+    if (dates[0] === todayStr || dates[0] === yestStr) {
+      streak = 1;
+      let checkDate = new Date(dates[0]);
+      for (let i = 1; i < dates.length; i++) {
+        checkDate.setDate(checkDate.getDate() - 1);
+        if (dates[i] === checkDate.toISOString().slice(0,10)) streak++; else break;
+      }
+    }
+  }
+  document.getElementById('statStreak').innerText = streak;
+  
+  // Today's Task Logic
+  const pending = [];
+  state.plan.forEach((w, wi) => {
+    w.topics.forEach((t, ti) => {
+      if (!state.done[`m-${wi}-${ti}`]) pending.push({w: w.title, t: t.title});
+    });
+  });
+  
+  const tb = document.getElementById('todayTaskBox');
+  if (pending.length > 0) {
+    tb.innerHTML = `
+      <div class="alert" style="margin: 0; background: #eff6ff; border-color: var(--primary);">
+        <i class="fas fa-bullseye alert-icon"></i>
+        <div class="alert-text">
+          <div style="font-size:12px; color:var(--primary); font-weight:800; text-transform:uppercase; margin-bottom:4px;">Next Up • ${pending[0].w}</div>
+          <strong style="font-size:16px; color: #1e293b;">${escapeHtml(pending[0].t)}</strong>
+        </div>
+      </div>
+    `;
+  } else {
+    tb.innerHTML = `<div class="alert" style="margin: 0; background: #dcfce7; border-color: var(--success);"><i class="fas fa-check-circle alert-icon" style="color: var(--success);"></i><div class="alert-text"><strong style="color: var(--success);">All Topics Completed!</strong></div></div>`;
+  }
+
+  // Plan Rendering exactly like User Screenshot
+  document.getElementById('mainProgressBar').style.width = `${pct}%`;
+  document.getElementById('planMetaText').innerText = `${state.plan.length} Weeks Roadmap • ${totalMain} Topics`;
+  
+  const wc = document.getElementById('weeksContainer');
+  wc.innerHTML = '';
+  
+  state.plan.forEach((w, wi) => {
+    let wTotal = w.topics.length;
+    let wDone = w.topics.filter((_, ti) => state.done[`m-${wi}-${ti}`]).length;
+    
+    let wHtml = `<div class="week-card">
+      <div class="week-header">
+        <h3><i class="far fa-calendar-alt" style="color: var(--primary); margin-right: 8px;"></i> ${escapeHtml(w.title)}</h3>
+        <span class="status-badge ${wDone === wTotal && wTotal > 0 ? 'complete' : ''}">${wDone} / ${wTotal}</span>
+      </div>
+      <div class="week-body">`;
+      
+    w.topics.forEach((t, ti) => {
+      const isMainDone = !!state.done[`m-${wi}-${ti}`];
+      const query = encodeURIComponent(t.title);
+      
+      wHtml += `
+        <div class="main-topic-block">
+          <div class="main-topic-header">
+            <div class="main-topic-title-row">
+              <input type="checkbox" class="custom-cb" onchange="toggleMain(${wi}, ${ti}, this.checked)" ${isMainDone ? 'checked' : ''}>
+              <label class="task-name" onclick="this.previousElementSibling.click()">${escapeHtml(t.title)}</label>
+            </div>
+            
+            <div class="yt-group">
+              <a href="https://www.youtube.com/results?search_query=${query}+explained" target="_blank" class="yt-link"><i class="fab fa-youtube"></i> Concept</a>
+              <a href="https://www.youtube.com/results?search_query=${query}+tutorial+hindi" target="_blank" class="yt-link hindi"><i class="fab fa-youtube"></i> Hindi</a>
+              <a href="https://www.youtube.com/results?search_query=${query}+crash+course" target="_blank" class="yt-link" style="background:#fdf4ff;color:#7c3aed;border-color:#e9d5ff;"><i class="fab fa-youtube"></i> Crash Course</a>
+              <a href="https://www.youtube.com/results?search_query=${query}+interview+questions" target="_blank" class="yt-link prep"><i class="fas fa-clipboard-check"></i> Interview Qs</a>
+              <a href="https://www.youtube.com/results?search_query=${query}+practice+problems" target="_blank" class="yt-link" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;"><i class="fas fa-code"></i> Practice</a>
+            </div>
+          </div>
+      `;
+
+      // Render Focus Areas
+      if (t.focus && t.focus.length > 0) {
+        wHtml += `<div class="focus-area-box"><i class="fas fa-crosshairs"></i> <b>Focus Area:</b> ${escapeHtml(t.focus.join(", "))}</div>`;
+      }
+      
+      // Render Sub Topics
+      if (t.subs && t.subs.length > 0) {
+        wHtml += `<div class="subtopics-container">`;
+        t.subs.forEach((sub, sIdx) => {
+          const isSubDone = !!state.done[`s-${wi}-${ti}-${sIdx}`];
+          wHtml += `
+            <div class="subtopic-row">
+              <input type="checkbox" class="custom-cb-sub" onchange="toggleSub(${wi}, ${ti}, ${sIdx}, this.checked)" ${isSubDone || isMainDone ? 'checked' : ''}>
+              <label class="subtask-name" onclick="this.previousElementSibling.click()">${escapeHtml(sub)}</label>
+            </div>
+          `;
+        });
+        wHtml += `</div>`;
+      }
+      wHtml += `</div>`;
+    });
+    wHtml += `</div></div>`;
+    wc.innerHTML += wHtml;
+  });
+}
+
+function renderChart() {
+  const ctx = document.getElementById("activityChart");
+  if (!ctx) return;
+  if (chartInstance) chartInstance.destroy();
+  const labels = []; const data = [];
+  for(let i=6; i>=0; i--){
+    let d = new Date(); d.setDate(d.getDate()-i);
+    labels.push(d.toLocaleDateString(undefined, {weekday:'short', day:'numeric'}));
+    data.push(Math.max(0, Number(state.study[d.toISOString().slice(0,10)]||0)));
+  }
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ label: 'Hours', data: data, backgroundColor: '#3b82f6', borderRadius: 8 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#e2e8f0' }, border: { display: false } }, x: { grid: { display: false }, border: { display: false } } } }
+  });
+}
+
+window.exportData = function() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = "StudyTrackerAI_Data.json"; a.click();
+};
+
+function escapeHtml(str) { return (str||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+// --- PWA INSTALL ---
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBtn').style.display = 'none';
+  deferredPrompt = null;
+});
+window.installApp = async function() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').style.display = 'none';
+  }
+};
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  localStorage.setItem('jarvisApiKey', key);
+  document.getElementById('apiKeySaved').style.display = 'block';
+  setTimeout(() => document.getElementById('apiKeySaved').style.display = 'none', 2000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('jarvisApiKey');
+  if (saved) document.getElementById('apiKeyInput').value = saved;
+});
+</script>
+<!-- JARVIS FLOATING BUTTON -->
+<button id="jarvisBtn" onclick="toggleJarvis()" style="position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white;font-size:24px;box-shadow:0 8px 25px rgba(59,130,246,0.5);z-index:9999;border:none;cursor:pointer;"><i class="fas fa-robot"></i></button>
+
+<!-- JARVIS CHAT PANEL -->
+<div id="jarvisPanel" style="display:none;position:fixed;bottom:100px;right:30px;width:360px;max-height:500px;background:#0f172a;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.4);z-index:9998;flex-direction:column;overflow:hidden;">
+  <div style="padding:16px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:10px;color:white;">
+      <i class="fas fa-robot" style="font-size:20px;"></i>
+      <div><div style="font-weight:800;font-size:15px;">JARVIS</div><div style="font-size:11px;opacity:0.8;">Study AI Assistant</div></div>
+    </div>
+    <button onclick="toggleJarvis()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">x</button>
+  </div>
+  <div id="jarvisMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;max-height:340px;background:#0f172a;">
+    <div style="background:#1e293b;color:#94a3b8;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.6;">👋 Hello! I'm <b style="color:#3b82f6;">JARVIS</b>, your study assistant.<br><br>Koi bhi topic ka doubt poocho — main explain karunga!</div>
+  </div>
+  <div style="padding:12px;background:#1e293b;display:flex;gap:8px;">
+    <input id="jarvisInput" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendToJarvis()" style="flex:1;padding:10px 14px;border-radius:10px;background:#0f172a;color:white;border:1px solid #334155;font-size:14px;outline:none;">
+    <button onclick="sendToJarvis()" style="background:#3b82f6;color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:16px;"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<!-- JARVIS API KEY INPUT in Settings -->
+<script>
+let jarvisOpen = false;
+
+function toggleJarvis() {
+  jarvisOpen = !jarvisOpen;
+  const panel = document.getElementById('jarvisPanel');
+  panel.style.display = jarvisOpen ? 'flex' : 'none';
+  if (jarvisOpen) document.getElementById('jarvisInput').focus();
+}
+
+async function sendToJarvis() {
+  const input = document.getElementById('jarvisInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  const box = document.getElementById('jarvisMessages');
+
+  box.innerHTML += `<div style="background:#3b82f6;color:white;padding:10px 14px;border-radius:12px;font-size:13px;align-self:flex-end;max-width:85%;word-break:break-word;">${escapeHtml(msg)}</div>`;
+
+  const typingId = 'typing_' + Date.now();
+  box.innerHTML += `<div id="${typingId}" style="background:#1e293b;color:#94a3b8;padding:10px 14px;border-radius:12px;font-size:13px;">Thinking...</div>`;
+  box.scrollTop = box.scrollHeight;
+
+  const topics = [];
+  if (state.plan) state.plan.forEach(w => w.topics.forEach(t => topics.push(t.title)));
+  const topicContext = topics.length ? `My syllabus topics: ${topics.slice(0,20).join(', ')}.` : '';
+  const apiKey = localStorage.getItem('jarvisApiKey') || '';
+
+  if (!apiKey) {
+    document.getElementById(typingId).innerHTML = '⚠️ Pehle <b>Settings</b> mein apna Gemini API key daalo!';
+    box.scrollTop = box.scrollHeight;
+    return;
+  }
+
+  const prompt = `You are JARVIS, a friendly study assistant. Answer in simple Hinglish (Hindi+English mix). Be concise (max 6 lines). ${topicContext}\n\nStudent asks: ${msg}`;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    const data = await res.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response. Check your API key.';
+    document.getElementById(typingId).innerHTML = reply.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+  } catch(e) {
+    document.getElementById(typingId).innerHTML = 'Error! Check your API key in Settings.';
+  }
+  box.scrollTop = box.scrollHeight;
+}
+</script>
+</body>
+</html>
