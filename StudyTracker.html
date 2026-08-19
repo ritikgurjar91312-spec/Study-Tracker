@@ -347,14 +347,13 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
 .theme-btn-full:hover{transform:translateY(-2px);border-color:var(--primary);}
 .theme-btn-full.active{border-color:var(--primary);background:var(--primary);color:white;box-shadow:0 4px 12px rgba(0,0,0,0.3);}
 /* Background Layer */
-#bgLayer{position:fixed;inset:0;z-index:0;pointer-events:none;}
+#bgLayer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
 #bgLayer canvas{position:absolute;inset:0;width:100%;height:100%;}
-#bgLayer .bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.18;}
+#bgLayer .bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 body{position:relative;}
-.sidebar,.main-content{position:relative;z-index:1;}
-.bg-preset-btn{width:80px;height:56px;border-radius:10px;border:2px solid var(--border);cursor:pointer;overflow:hidden;font-size:11px;font-weight:700;color:var(--text-main);background:var(--input-bg);transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
-.bg-preset-btn:hover,.bg-preset-btn.active{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.3);}
-.bg-preset-btn.active{border-color:var(--primary);outline:2px solid var(--primary);}
+.sidebar{position:relative;z-index:2;}
+.main-content{position:relative;z-index:1;background:transparent !important;}
+.has-bg .main-content{background:transparent !important;}
 /* old circle btn kept for compat */
 .theme-btn{width:36px;height:36px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all 0.2s;}
 .theme-btn.active{border-color:var(--primary);transform:scale(1.15);}
@@ -1311,12 +1310,12 @@ async function sendToJarvis() {
 // ── BACKGROUND SYSTEM ──
 let bgAnimFrame = null;
 const PRESET_IMAGES = {
-  'naruto-img': 'https://wallpapercave.com/wp/wp2697965.jpg',
-  'goku-img': 'https://wallpapercave.com/wp/wp1913053.jpg',
-  'goddess-img': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1920&q=80',
-  'space-img': 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1920&q=80',
-  'sakura-img': 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80',
-  'onepiece-img': 'https://wallpapercave.com/wp/wp3415760.jpg'
+  'naruto-img':'https://i.imgur.com/8JLXZ9m.jpg',
+  'goku-img':'https://i.imgur.com/QnFHnKA.jpg',
+  'goddess-img':'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1920&q=80',
+  'space-img':'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1920&q=80',
+  'sakura-img':'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80',
+  'onepiece-img':'https://i.imgur.com/3vSqKzP.jpg'
 };
 
 function setBg(type) {
@@ -1328,17 +1327,19 @@ function setBg(type) {
   if (btn) btn.classList.add('active');
   localStorage.setItem('appBg', type);
   const opacity = (document.getElementById('bgOpacity')?.value || 20) / 100;
+  document.body.classList.toggle('has-bg', type !== 'none');
   if (type === 'none') return;
   if (PRESET_IMAGES[type]) { applyBgImage(PRESET_IMAGES[type], opacity); return; }
   const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
   canvas.width = window.innerWidth; canvas.height = window.innerHeight;
   layer.appendChild(canvas);
   const ctx = canvas.getContext('2d');
-  if (type === 'stars') animStars(ctx, canvas);
-  else if (type === 'matrix') animMatrix(ctx, canvas);
-  else if (type === 'particles') animParticles(ctx, canvas);
-  else if (type === 'waves') animWaves(ctx, canvas);
-  else if (type === 'fire') animFire(ctx, canvas);
+  if (type==='stars') animStars(ctx,canvas);
+  else if (type==='matrix') animMatrix(ctx,canvas);
+  else if (type==='particles') animParticles(ctx,canvas);
+  else if (type==='waves') animWaves(ctx,canvas);
+  else if (type==='fire') animFire(ctx,canvas);
 }
 
 function applyBgImage(url, opacity) {
@@ -1352,11 +1353,11 @@ function handleBgUpload(e) {
   reader.onload = ev => {
     stopBgAnim();
     const layer = document.getElementById('bgLayer');
-    layer.innerHTML = '';
     const opacity = (document.getElementById('bgOpacity')?.value || 20) / 100;
     layer.innerHTML = `<img class="bg-img" src="${ev.target.result}" style="opacity:${opacity};">`;
-    localStorage.setItem('appBg', 'custom-upload');
+    localStorage.setItem('appBg','custom-upload');
     localStorage.setItem('appBgCustom', ev.target.result);
+    document.body.classList.add('has-bg');
     document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
   };
   reader.readAsDataURL(file);
@@ -1367,11 +1368,11 @@ function setBgUrl() {
   if (!url) return;
   stopBgAnim();
   const layer = document.getElementById('bgLayer');
-  layer.innerHTML = '';
   const opacity = (document.getElementById('bgOpacity')?.value || 20) / 100;
   applyBgImage(url, opacity);
-  localStorage.setItem('appBg', 'custom-url');
+  localStorage.setItem('appBg','custom-url');
   localStorage.setItem('appBgCustom', url);
+  document.body.classList.add('has-bg');
   document.querySelectorAll('.bg-preset-btn').forEach(b => b.classList.remove('active'));
 }
 
@@ -1387,109 +1388,106 @@ function stopBgAnim() {
 }
 
 function animStars(ctx, canvas) {
-  const stars = Array.from({length:180}, () => ({
-    x: Math.random()*canvas.width, y: Math.random()*canvas.height,
-    r: Math.random()*1.8+0.3, a: Math.random(), speed: Math.random()*0.008+0.003
+  const stars = Array.from({length:200}, () => ({
+    x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+    r:Math.random()*1.8+0.3, a:Math.random(), speed:Math.random()*0.008+0.003
   }));
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     stars.forEach(s => {
-      s.a += s.speed; if(s.a>1||s.a<0) s.speed*=-1;
+      s.a+=s.speed; if(s.a>1||s.a<0) s.speed*=-1;
       ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(255,255,255,${s.a*0.8})`; ctx.fill();
+      ctx.fillStyle=`rgba(255,255,255,${s.a})`; ctx.fill();
     });
-    bgAnimFrame = requestAnimationFrame(draw);
+    bgAnimFrame=requestAnimationFrame(draw);
   } draw();
 }
 
 function animMatrix(ctx, canvas) {
-  const cols = Math.floor(canvas.width/18);
-  const drops = Array(cols).fill(1);
-  const chars = '0123456789ABCDEF日本語アイウエオカキクケコ';
+  const cols=Math.floor(canvas.width/18), drops=Array(cols).fill(1);
+  const chars='0123456789ABCDEFアイウエオカキクケコ';
   function draw() {
     ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle='#00ff41'; ctx.font='14px monospace';
-    drops.forEach((y,i) => {
-      ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*18, y*18);
-      if(y*18>canvas.height && Math.random()>0.975) drops[i]=0;
+    drops.forEach((y,i)=>{
+      ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*18,y*18);
+      if(y*18>canvas.height&&Math.random()>0.975) drops[i]=0;
       drops[i]++;
     });
-    bgAnimFrame = requestAnimationFrame(draw);
+    bgAnimFrame=requestAnimationFrame(draw);
   } draw();
 }
 
 function animParticles(ctx, canvas) {
-  const pts = Array.from({length:80}, () => ({
+  const pts=Array.from({length:80},()=>({
     x:Math.random()*canvas.width, y:Math.random()*canvas.height,
-    vx:(Math.random()-0.5)*0.6, vy:(Math.random()-0.5)*0.6,
+    vx:(Math.random()-0.5)*0.8, vy:(Math.random()-0.5)*0.8,
     r:Math.random()*3+1, c:`hsl(${Math.random()*360},80%,70%)`
   }));
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    pts.forEach(p => {
+    pts.forEach(p=>{
       p.x+=p.vx; p.y+=p.vy;
       if(p.x<0||p.x>canvas.width) p.vx*=-1;
       if(p.y<0||p.y>canvas.height) p.vy*=-1;
       ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      ctx.fillStyle=p.c; ctx.globalAlpha=0.6; ctx.fill(); ctx.globalAlpha=1;
+      ctx.fillStyle=p.c; ctx.globalAlpha=0.7; ctx.fill(); ctx.globalAlpha=1;
     });
-    pts.forEach((p,i) => pts.slice(i+1).forEach(q => {
+    pts.forEach((p,i)=>pts.slice(i+1).forEach(q=>{
       const d=Math.hypot(p.x-q.x,p.y-q.y);
       if(d<120){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);
-        ctx.strokeStyle=`rgba(150,150,255,${0.15*(1-d/120)})`;ctx.lineWidth=0.8;ctx.stroke();}
+        ctx.strokeStyle=`rgba(180,180,255,${0.2*(1-d/120)})`;ctx.lineWidth=0.8;ctx.stroke();}
     }));
-    bgAnimFrame = requestAnimationFrame(draw);
+    bgAnimFrame=requestAnimationFrame(draw);
   } draw();
 }
 
 function animWaves(ctx, canvas) {
-  let t = 0;
+  let t=0;
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    [0.3,0.2,0.15].forEach((a,i) => {
+    [[0.35,'rgba(14,165,233,0.35)'],[0.25,'rgba(6,182,212,0.25)'],[0.18,'rgba(59,130,246,0.18)']].forEach(([_,color],i)=>{
       ctx.beginPath();
-      for(let x=0;x<=canvas.width;x+=4) {
-        const y = canvas.height*0.5 + Math.sin(x*0.008+t+i*1.2)*60*(1-i*0.2) + Math.sin(x*0.015+t*1.3)*30;
+      for(let x=0;x<=canvas.width;x+=3){
+        const y=canvas.height*0.6+Math.sin(x*0.008+t+i*1.2)*70+Math.sin(x*0.015+t*1.5)*35;
         x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       }
-      ctx.lineTo(canvas.width,canvas.height); ctx.lineTo(0,canvas.height); ctx.closePath();
-      ctx.fillStyle=`rgba(14,165,233,${a})`; ctx.fill();
+      ctx.lineTo(canvas.width,canvas.height);ctx.lineTo(0,canvas.height);ctx.closePath();
+      ctx.fillStyle=color;ctx.fill();
     });
-    t+=0.015; bgAnimFrame = requestAnimationFrame(draw);
+    t+=0.018; bgAnimFrame=requestAnimationFrame(draw);
   } draw();
 }
 
 function animFire(ctx, canvas) {
-  let t = 0;
+  let t=0;
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    for(let i=0;i<6;i++) {
-      const x = canvas.width*0.5 + Math.sin(t*0.7+i)*80;
-      const h = 200+Math.sin(t+i*0.8)*80;
-      const grd = ctx.createRadialGradient(x,canvas.height,0,x,canvas.height-h,h);
-      grd.addColorStop(0,'rgba(255,200,0,0.3)');
-      grd.addColorStop(0.4,'rgba(255,80,0,0.15)');
+    for(let i=0;i<8;i++){
+      const x=canvas.width*0.5+Math.sin(t*0.7+i*0.8)*120;
+      const h=180+Math.sin(t+i)*80;
+      const grd=ctx.createRadialGradient(x,canvas.height,0,x,canvas.height-h,h);
+      grd.addColorStop(0,'rgba(255,220,0,0.4)');
+      grd.addColorStop(0.4,'rgba(255,80,0,0.2)');
       grd.addColorStop(1,'rgba(255,0,0,0)');
-      ctx.beginPath(); ctx.ellipse(x,canvas.height-h/2,40+i*8,h/2,0,0,Math.PI*2);
-      ctx.fillStyle=grd; ctx.fill();
+      ctx.beginPath();ctx.ellipse(x,canvas.height-h/2,50+i*5,h/2,0,0,Math.PI*2);
+      ctx.fillStyle=grd;ctx.fill();
     }
-    t+=0.02; bgAnimFrame = requestAnimationFrame(draw);
+    t+=0.02; bgAnimFrame=requestAnimationFrame(draw);
   } draw();
 }
 
 function initBg() {
-  const saved = localStorage.getItem('appBg') || 'none';
-  const opacity = localStorage.getItem('appBgOpacity') || '20';
-  const opEl = document.getElementById('bgOpacity');
-  const opValEl = document.getElementById('bgOpacityVal');
-  if(opEl) { opEl.value = opacity; }
-  if(opValEl) { opValEl.textContent = opacity + '%'; }
-  if(saved === 'custom-upload' || saved === 'custom-url') {
-    const custom = localStorage.getItem('appBgCustom');
-    if(custom) { stopBgAnim(); const layer=document.getElementById('bgLayer'); layer.innerHTML=''; applyBgImage(custom, opacity/100); }
-  } else {
-    setBg(saved);
-  }
+  const saved=localStorage.getItem('appBg')||'none';
+  const opacity=localStorage.getItem('appBgOpacity')||'20';
+  const opEl=document.getElementById('bgOpacity');
+  if(opEl){opEl.value=opacity;}
+  const opValEl=document.getElementById('bgOpacityVal');
+  if(opValEl){opValEl.textContent=opacity+'%';}
+  if(saved==='custom-upload'||saved==='custom-url'){
+    const custom=localStorage.getItem('appBgCustom');
+    if(custom){stopBgAnim();document.getElementById('bgLayer').innerHTML='';applyBgImage(custom,opacity/100);document.body.classList.add('has-bg');}
+  } else { setBg(saved); }
 }
 
 // ── PWA ──
