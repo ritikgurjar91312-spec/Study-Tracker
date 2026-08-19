@@ -141,6 +141,20 @@ textarea.form-input { min-height: 250px; resize: vertical; line-height: 1.6; }
 .ai-spinner { font-size: 40px; color: var(--primary); margin-bottom: 16px; animation: spin 1.5s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
+/* Animations */
+@keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+@keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.05); } }
+@keyframes glow { 0%,100% { box-shadow:0 8px 25px rgba(59,130,246,0.4); } 50% { box-shadow:0 8px 35px rgba(139,92,246,0.7); } }
+.card { animation: slideUp 0.4s ease both; }
+.week-card { animation: slideUp 0.3s ease both; }
+.stat-box { transition: transform 0.2s; }
+.stat-box:hover { transform: translateY(-4px); }
+#jarvisBtn { animation: glow 2.5s ease-in-out infinite; }
+.custom-cb:checked, .custom-cb-sub:checked { animation: pulse 0.3s ease; }
+.btn-primary:active { transform: scale(0.97); }
+.nav-item { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
+.yt-link { transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
+
 /* Responsive */
 @media (max-width: 900px) {
   body { flex-direction: column; }
@@ -886,26 +900,22 @@ function escapeHtml(str) { return (str||"").replace(/[&<>"']/g, m => ({'&':'&amp
 // --- PWA INSTALL ---
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
+  e.preventDefault(); deferredPrompt = e;
   document.getElementById('installBtn').style.display = 'flex';
 });
 window.addEventListener('appinstalled', () => {
-  document.getElementById('installBtn').style.display = 'none';
-  deferredPrompt = null;
+  document.getElementById('installBtn').style.display = 'none'; deferredPrompt = null;
 });
 window.installApp = async function() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    document.getElementById('installBtn').style.display = 'none';
-  }
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBtn').style.display = 'none';
 };
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(()=>{});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
+// --- API KEY ---
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
   if (!key) return;
@@ -914,36 +924,8 @@ function saveApiKey() {
   setTimeout(() => document.getElementById('apiKeySaved').style.display = 'none', 2000);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('jarvisApiKey');
-  if (saved) document.getElementById('apiKeyInput').value = saved;
-});
-</script>
-<!-- JARVIS FLOATING BUTTON -->
-<button id="jarvisBtn" onclick="toggleJarvis()" style="position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white;font-size:24px;box-shadow:0 8px 25px rgba(59,130,246,0.5);z-index:9999;border:none;cursor:pointer;"><i class="fas fa-robot"></i></button>
-
-<!-- JARVIS CHAT PANEL -->
-<div id="jarvisPanel" style="display:none;position:fixed;bottom:100px;right:30px;width:360px;max-height:500px;background:#0f172a;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.4);z-index:9998;flex-direction:column;overflow:hidden;">
-  <div style="padding:16px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:space-between;">
-    <div style="display:flex;align-items:center;gap:10px;color:white;">
-      <i class="fas fa-robot" style="font-size:20px;"></i>
-      <div><div style="font-weight:800;font-size:15px;">JARVIS</div><div style="font-size:11px;opacity:0.8;">Study AI Assistant</div></div>
-    </div>
-    <button onclick="toggleJarvis()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">x</button>
-  </div>
-  <div id="jarvisMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;max-height:340px;background:#0f172a;">
-    <div style="background:#1e293b;color:#94a3b8;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.6;">👋 Hello! I'm <b style="color:#3b82f6;">JARVIS</b>, your study assistant.<br><br>Koi bhi topic ka doubt poocho — main explain karunga!</div>
-  </div>
-  <div style="padding:12px;background:#1e293b;display:flex;gap:8px;">
-    <input id="jarvisInput" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendToJarvis()" style="flex:1;padding:10px 14px;border-radius:10px;background:#0f172a;color:white;border:1px solid #334155;font-size:14px;outline:none;">
-    <button onclick="sendToJarvis()" style="background:#3b82f6;color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:16px;"><i class="fas fa-paper-plane"></i></button>
-  </div>
-</div>
-
-<!-- JARVIS API KEY INPUT in Settings -->
-<script>
+// --- JARVIS ---
 let jarvisOpen = false;
-
 function toggleJarvis() {
   jarvisOpen = !jarvisOpen;
   const panel = document.getElementById('jarvisPanel');
@@ -957,40 +939,52 @@ async function sendToJarvis() {
   if (!msg) return;
   input.value = '';
   const box = document.getElementById('jarvisMessages');
-
-  box.innerHTML += `<div style="background:#3b82f6;color:white;padding:10px 14px;border-radius:12px;font-size:13px;align-self:flex-end;max-width:85%;word-break:break-word;">${escapeHtml(msg)}</div>`;
-
+  box.innerHTML += `<div style="background:#3b82f6;color:white;padding:10px 14px;border-radius:12px;font-size:13px;align-self:flex-end;max-width:85%;word-break:break-word;margin-left:auto;">${escapeHtml(msg)}</div>`;
   const typingId = 'typing_' + Date.now();
-  box.innerHTML += `<div id="${typingId}" style="background:#1e293b;color:#94a3b8;padding:10px 14px;border-radius:12px;font-size:13px;">Thinking...</div>`;
+  box.innerHTML += `<div id="${typingId}" style="background:#1e293b;color:#94a3b8;padding:10px 14px;border-radius:12px;font-size:13px;">⏳ Thinking...</div>`;
   box.scrollTop = box.scrollHeight;
-
+  const apiKey = localStorage.getItem('jarvisApiKey') || '';
+  if (!apiKey) {
+    document.getElementById(typingId).innerHTML = '⚠️ Pehle <b style="color:#f59e0b;">Settings tab</b> mein Gemini API key daalo. Free hai: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#3b82f6;">aistudio.google.com</a>';
+    box.scrollTop = box.scrollHeight; return;
+  }
   const topics = [];
   if (state.plan) state.plan.forEach(w => w.topics.forEach(t => topics.push(t.title)));
-  const topicContext = topics.length ? `My syllabus topics: ${topics.slice(0,20).join(', ')}.` : '';
-  const apiKey = localStorage.getItem('jarvisApiKey') || '';
-
-  if (!apiKey) {
-    document.getElementById(typingId).innerHTML = '⚠️ Pehle <b>Settings</b> mein apna Gemini API key daalo!';
-    box.scrollTop = box.scrollHeight;
-    return;
-  }
-
-  const prompt = `You are JARVIS, a friendly study assistant. Answer in simple Hinglish (Hindi+English mix). Be concise (max 6 lines). ${topicContext}\n\nStudent asks: ${msg}`;
-
+  const ctx = topics.length ? `Syllabus topics: ${topics.slice(0,20).join(', ')}.` : '';
+  const prompt = `You are JARVIS, a friendly study assistant. Answer in Hinglish (Hindi+English). Be concise max 6 lines. ${ctx}\n\nStudent: ${msg}`;
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({contents:[{parts:[{text:prompt}]}]})
     });
     const data = await res.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response. Check your API key.';
-    document.getElementById(typingId).innerHTML = reply.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+    document.getElementById(typingId).innerHTML = reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>');
   } catch(e) {
-    document.getElementById(typingId).innerHTML = 'Error! Check your API key in Settings.';
+    document.getElementById(typingId).innerHTML = '❌ Error! API key check karo Settings mein.';
   }
   box.scrollTop = box.scrollHeight;
 }
-</script>
+
+<!-- JARVIS FLOATING BUTTON -->
+<button id="jarvisBtn" onclick="toggleJarvis()" style="position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white;font-size:24px;z-index:9999;border:none;cursor:pointer;"><i class="fas fa-robot"></i></button>
+
+<!-- JARVIS PANEL -->
+<div id="jarvisPanel" style="display:none;position:fixed;bottom:100px;right:30px;width:350px;max-height:480px;background:#0f172a;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:9998;flex-direction:column;overflow:hidden;">
+  <div style="padding:14px 18px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:10px;color:white;">
+      <i class="fas fa-robot" style="font-size:18px;"></i>
+      <div><div style="font-weight:800;font-size:14px;">JARVIS</div><div style="font-size:11px;opacity:0.8;">Study AI Assistant</div></div>
+    </div>
+    <button onclick="toggleJarvis()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">✕</button>
+  </div>
+  <div id="jarvisMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:320px;background:#0f172a;">
+    <div style="background:#1e293b;color:#94a3b8;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.6;">👋 Hello! I'm <b style="color:#3b82f6;">JARVIS</b>.<br>Koi bhi topic ka doubt poocho!</div>
+  </div>
+  <div style="padding:10px;background:#1e293b;display:flex;gap:8px;">
+    <input id="jarvisInput" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendToJarvis()" style="flex:1;padding:9px 13px;border-radius:10px;background:#0f172a;color:white;border:1px solid #334155;font-size:13px;outline:none;">
+    <button onclick="sendToJarvis()" style="background:#3b82f6;color:white;border:none;padding:9px 13px;border-radius:10px;cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div>
 </body>
 </html>
