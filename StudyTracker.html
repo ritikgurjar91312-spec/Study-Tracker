@@ -642,13 +642,11 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
 
   <!-- Jarvis AI -->
   <div class="card" style="margin-bottom:20px;">
-    <h3 class="card-title"><i class="fas fa-robot"></i> Jarvis AI — Gemini Key</h3>
-    <p style="color:var(--text-muted);font-size:13px;margin:0 0 12px;">Free key lo: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary);font-weight:700;">aistudio.google.com</a> → Get API Key (bilkul free hai)</p>
-    <div style="display:flex;gap:10px;">
-      <input id="geminiKeyInput" type="password" class="form-input" placeholder="AIza... paste karo" style="flex:1;">
-      <button class="btn btn-primary" onclick="saveGeminiKey()"><i class="fas fa-save"></i> Save</button>
+    <h3 class="card-title"><i class="fas fa-robot"></i> Jarvis AI</h3>
+    <div class="alert" style="margin:0;background:#dcfce7;border-color:var(--success);">
+      <i class="fas fa-check-circle alert-icon" style="color:var(--success);"></i>
+      <div class="alert-text"><strong style="color:var(--success);">No API Key Needed! 🎉</strong><p>Jarvis bilkul free hai — koi signup nahi, koi key nahi. Seedha poocho!</p></div>
     </div>
-    <div id="geminiKeySaved" style="display:none;color:var(--success);font-weight:700;margin-top:8px;font-size:13px;"><i class="fas fa-check-circle"></i> Key saved! Jarvis ready hai.</div>
   </div>
 
   <!-- Backup -->
@@ -676,7 +674,7 @@ textarea.form-input{min-height:220px;resize:vertical;line-height:1.6;}
     <button onclick="toggleJarvis()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">✕</button>
   </div>
   <div id="jarvisMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:320px;background:#0f172a;">
-    <div style="background:#1e293b;color:#94a3b8;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;">👋 Hello! I'm <b style="color:#3b82f6;">JARVIS</b> powered by Gemini.<br>Settings mein API key daalo, phir seedha poocho! 🚀</div>
+    <div style="background:#1e293b;color:#94a3b8;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;">👋 Hello! I'm <b style="color:#3b82f6;">JARVIS</b> — your free AI study buddy!<br>Koi API key nahi chahiye. Seedha poocho! 🚀</div>
   </div>
   <div style="padding:10px;background:#1e293b;display:flex;gap:8px;">
     <input id="jarvisInput" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendToJarvis()" style="flex:1;padding:9px 13px;border-radius:10px;background:#0f172a;color:white;border:1px solid #334155;font-size:13px;outline:none;">
@@ -1251,34 +1249,18 @@ async function sendToJarvis() {
   box.innerHTML+=`<div id="${tid}" style="background:#1e293b;color:#94a3b8;padding:9px 13px;border-radius:12px;font-size:13px;">Thinking... ✨</div>`;
   box.scrollTop=box.scrollHeight;
 
-  const apiKey = localStorage.getItem('geminiKey')||'';
-  if(!apiKey) {
-    document.getElementById(tid).innerHTML='⚠️ Pehle <b>Settings</b> mein Gemini API key daalo!<br><small style="color:#64748b;"><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#3b82f6;">aistudio.google.com</a> → Get API Key (free)</small>';
-    box.scrollTop=box.scrollHeight; return;
-  }
-
   const topics=[];
   if(state.plan) state.plan.forEach(w=>w.topics.forEach(t=>topics.push(t.title)));
-  const ctx=topics.length?`Mere syllabus ke topics: ${topics.slice(0,15).join(', ')}.`:'';
+  const ctx=topics.length?`My syllabus topics: ${topics.slice(0,15).join(', ')}.`:'';
   const prompt=`You are JARVIS, a friendly study assistant. Answer in simple Hinglish (Hindi+English mix). Be concise (max 6 lines). ${ctx}\n\nStudent: ${msg}`;
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+    const res = await fetch(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`, {
+      method:'GET',
+      headers:{'Accept':'text/plain'}
     });
-    const data = await res.json();
-    if(data?.error) {
-      const code = data.error.code;
-      if(code===400||code===403||code===401) {
-        document.getElementById(tid).innerHTML=`❌ API Key galat hai. <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#3b82f6;">Naya key lo</a> aur Settings mein save karo.`;
-      } else {
-        document.getElementById(tid).innerHTML=`❌ Error: ${data.error.message||'Unknown error'}`;
-      }
-      box.scrollTop=box.scrollHeight; return;
-    }
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Koi response nahi mila.';
+    if(!res.ok) throw new Error('API error');
+    const reply = await res.text();
     document.getElementById(tid).innerHTML = reply.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<i>$1</i>');
   } catch(e) {
     document.getElementById(tid).innerHTML = '❌ Network error. Internet check karo.';
